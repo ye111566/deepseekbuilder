@@ -1,5 +1,6 @@
 # deepseekbuilder
 use deepseek to build construstions in minecraft!(levilamina)
+
 使用方法 (Usage)
 1. 环境要求
 LeviLamina​ 服务端（基岩版专用服务器）
