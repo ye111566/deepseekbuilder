@@ -1,151 +1,190 @@
 # deepseekbuilder
 use deepseek to build construstions in minecraft!(levilamina)
+# DeepSeek Builder
 
-使用方法 (Usage)
-1. 环境要求
-LeviLamina​ 服务端（基岩版专用服务器）
-安装 LegacyScriptEngine (LSE)，并确保已通过 lip 安装 QuickJS​ 与 Python​ 引擎
-Python 3.10+（需与 LSE Python 引擎要求的版本匹配）
-安装 Python 依赖库 openai
-一个有效的 DeepSeek API Key
-# 通过 lip 安装 LSE 引擎（示例）
-lip install github.com/LiteLDev/LegacyScriptEngine#quickjs
-lip install github.com/LiteLDev/LegacyScriptEngine#python
+> 用一句自然语言，在 Minecraft 里生成建筑。  
+> 基于 **LiteLoaderBDS** 的 AI 建筑生成插件，对接 **DeepSeek** 大模型，支持选区、生成、历史记录与重放。
 
-# 安装 Python 依赖
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Platform](https://img.shields.io/badge/platform-LiteLoaderBDS-green.svg)
+![Version](https://img.shields.io/badge/version-1.0.3-orange.svg)
+
+---
+
+## ✨ 功能特性
+
+- 🧱 **自然语言建建筑**：在选区里描述需求（例如"建一个两层小木屋"），AI 自动生成方块填充指令
+- 🪓 **铁斧两点选区**：手持铁斧左右键点击两个方块即可确定建筑范围
+- ⚡ **分块填充**：自动把大范围按 16×16 分块，逐块 `fill`，规避单条指令体积限制
+- 📊 **指令队列调度**：BossBar 实时显示进度，逐条执行，完成后自动传送回原位
+- 🕘 **历史记录**：保存每次对话，可查看详情、一键重新执行、清空记录
+- 🔁 **结构 save / load**：支持把选区保存为结构并复用加载
+- 🧩 **台阶智能命名**：自动把 `xxx_slab_bottom / _top` 转成 `vertical_half` 方块状态
+
+---
+
+## 🏗 工作原理
+
+```
+玩家描述 ──► Python 调用 DeepSeek API ──► 返回紧凑标签文本
+                                              │
+                                              ▼
+                    Task(相对坐标) ──► Builder(世界坐标) ──► CommandQueue(逐条执行)
+```
+
+- **Task**：记录选区最小点、尺寸、维度，把 AI 的**局部坐标**转换成世界坐标
+- **Builder**：生成具体的 `fill / save / load` 指令数组
+- **CommandQueue**：按 50ms 间隔逐条执行，BossBar 显示进度
+
+---
+
+## 📦 环境要求
+
+| 依赖 | 说明 |
+|:---|:---|
+| [LiteLoaderBDS](https://github.com/LiteLDev/LiteLoaderBDS) | 插件运行平台（需支持 `ll.registerPlugin` / `mc.newCommand`） |
+| [HelperLib](https://github.com/afraidofsunlight/HelperLib) | JS 类型提示（仅开发需要，运行可不装） |
+| Python 3.8+ | 调用 DeepSeek API |
+| `openai` Python 包 | `pip install openai` |
+| DeepSeek API Key | 在 [DeepSeek 开放平台](https://platform.deepseek.com/) 申请 |
+
+---
+
+## 🚀 安装
+
+1. 将两个文件放入服务器目录：
+
+```
+服务器根目录/
+├── plugins/
+│   └── deepseekbuilder/
+│       ├── deepseekbuilder.js
+│       └── deepseekbuilder.py
+└── deepseekbuilder.json      ← 首次运行自动生成（对话历史）
+```
+
+2. 安装 Python 依赖：
+
+```bash
 pip install openai
-2. 安装插件
-将插件文件夹整体放入服务端的 plugins/ 目录下：
-plugins/
-└── deepseekbuilder/
-    ├── deepseekbuilder.js      # 主插件脚本
-    ├── deepseekbuilder.py      # DeepSeek API 调用脚本
-    └── manifest.json           # 首次启动后自动生成
-放置完成后，重启服务端，LSE 会自动迁移并加载插件。
-3. 配置 DeepSeek API Key
-用文本编辑器打开 deepseekbuilder.py，找到以下配置项并填入你的 API Key：
-DEEPSEEK_API_KEY = "sk-your-real-deepseek-key"
-⚠️ 警告：请勿将包含真实 Key 的代码提交到公开仓库！
-API Key 获取地址：https://platform.deepseek.com
-4. 游戏内选区
-手持 铁斧 (Iron Axe)
-对着第一个方块右键单击​ → 设置 POS_A
-对着对角方块右键单击​ → 设置 POS_B
-插件会自动在聊天栏显示选区大小。如果已选好两点，再次右键会重置选区。
-5. 指令说明
-基础指令：/deepseekbuilder
-快捷别名：/dsb
-5.1 用自然语言生成建筑
+```
+
+3. 编辑 `deepseekbuilder.py`，填入你的 API Key：
+
+```python
+DEEPSEEK_API_KEY = "sk-xxxxxxxxxxxxxxxx"
+```
+
+4. 重启服务器，控制台看到插件加载即成功。
+
+---
+
+## 🎮 使用方法
+
+### 1. 选区
+
+手持 **铁斧**，左键点击方块 A，再左键点击方块 B（或右键，取决于客户端行为），聊天栏会提示选区大小。
+
+> 两次点击需间隔 500ms 以上，防止重复触发。再次点击会重置选区。
+
+### 2. 生成建筑
+
+```
 /dsb generate
-执行后会弹出表单：
-在输入框中描述你的需求，例如：
-在选区内生成一个带窗户和门的两层中世纪小木屋
-插件会调用 DeepSeek AI 生成建筑方案
-生成完毕后，方块会通过指令队列自动搭建
-5.2 直接执行构建标签
+```
+
+弹出表单，输入建筑描述，例如：
+
+> 在选区内建一个带尖顶的中世纪石屋，开一扇门和两扇窗
+
+AI 生成后会提交到执行队列，BossBar 显示进度，完成后传送回原位。
+
+### 3. 直接执行标签
+
+```
 /dsb do "<fill>0,0,0,8,0,8,minecraft:stone</fill>"
-支持以下三种 XML 风格标签（紧凑相连，无空格）：
+```
+
+跳过 AI，直接解析并执行你给的标签内容（适合调试或复用历史结果）。
+
+### 4. 查看历史记录
+
+```
+/dsb history
+```
+
+- 点击 **🗑 清空历史对话** 删除该玩家全部记录
+- 点击某条记录查看 AI 原始回复
+- 最新一条记录底部有 **🔄 重新执行** 开关，勾选后会用当前选区重新跑一遍
+
+---
+
+## 📖 指令一览
+
+| 指令 | 说明 |
+|:---|:---|
+| `/dsb generate` | 打开需求表单，调用 AI 生成建筑 |
+| `/dsb do "<content>"` | 直接执行标签内容 |
+| `/dsb history` | 查看 / 清空历史记录 |
+| `/dsb` | 别名，等同于 `deepseekbuilder` |
+
+**权限**：`GameMasters`（OP 及以上），`permLevel == 0` 的玩家无法使用。
+
+---
+
+## 🧾 AI 输出格式（开发者参考）
+
+AI 只输出 API 调用序列，无解释文字，多个调用紧凑相连：
+
+```xml
 <fill>x0,y0,z0,x1,y1,z1,blockid</fill>
 <save>x0,y0,z0,x1,y1,z1,name</save>
 <load>x,y,z,name</load>
-📌 所有坐标均为相对于选区最小点 (minx, miny, minz) 的局部坐标。
-5.3 查看与重新执行历史记录
-/dsb history
-浏览你过去的 AI 对话与生成结果
-查看 AI 输出的原始标签
-最新一条记录支持一键重新执行（需提前用铁斧重新选区）
-6. AI 建筑规则简介
-AI 在生成建筑时遵循以下硬性规则（由系统提示词约束）：
-坐标为局部坐标，范围从 (0,0,0) 到 (lenX-1, lenY-1, lenZ-1)
-禁止使用楼梯 (stair)，垂直连接统一使用脚手架 (minecraft:scaffolding)
-屋顶使用台阶 (_top / _bottom) 与完整方块配合搭建，边缘严格对齐墙体
-地基即一楼地面，二楼及以上需单独铺设地板
-大面积填充会被自动分割为 16×16 的区块，通过 tickingarea 和 structure 指令流畅执行
-示例 AI 输出：
-<fill>0,0,0,8,0,8,minecraft:stone</fill>
-<fill>0,1,0,0,4,0,minecraft:oak_log</fill>
-<fill>1,1,0,7,3,0,minecraft:oak_planks</fill>
-<fill>0,5,0,8,5,8,minecraft:oak_slab_top</fill>
-7. 权限说明
-玩家需要 GameMaster 及以上权限（permLevel >= 1）才能使用本插件
-服务端需开启作弊并允许执行命令
-插件底层会调用 structure、tickingarea、fill 等管理员指令
-8. 注意事项
-save / load 的结构数据目前存储在内存中，服务端重启后会丢失
-AI 生成受限于你的选区大小，坐标绝不会超出边界
-建议选区大小适中，避免一次性让 AI 生成超大型建筑（如 200×200 城堡）导致指令队列过长
-如遇生成失败，请检查 logs/ 目录下的插件日志
+```
 
-Usage
-1. Requirements
-LeviLamina server (Bedrock Dedicated Server)
-LegacyScriptEngine with QuickJS​ + Python​ engines installed via lip
-Python 3.10+ (match the LSE Python engine version requirement)
-openai Python package
-A DeepSeek API Key
-# install LSE engines (example)
-lip install github.com/LiteLDev/LegacyScriptEngine#quickjs
-lip install github.com/LiteLDev/LegacyScriptEngine#python
+- 坐标均为**相对选区最小点**的局部坐标，范围 `0 ~ len-1`
+- 用户请求会带上 `<limit>x,y,z</limit>` 前缀，约束生成范围
+- 台阶必须写 `minecraft:oak_slab_bottom` / `_top`，插件会自动转换
 
-# install python dependency
-pip install openai
-2. Install the plugin
-Put the plugin folder under plugins/:
-plugins/
-└── deepseekbuilder/
-    ├── deepseekbuilder.js
-    ├── deepseekbuilder.py
-    └── manifest.json   (auto-generated on first launch)
-Then restart the server​ so LSE migrates and loads the plugin.
-3. Configure DeepSeek API Key
-Open deepseekbuilder.py and fill in your key:
-DEEPSEEK_API_KEY = "sk-your-real-deepseek-key"
-Do not commit your real key to public repos.
-Get a key from: https://platform.deepseek.com
-4. Select an area in-game
-Hold an Iron Axe
-Right-click a block → sets POS_A
-Right-click another block → sets POS_B
-The plugin shows the selection size automatically.
-5. Commands
-Base command: /deepseekbuilder
-Short alias: /dsb
-Generate a building from a prompt
-/dsb generate
-A form will appear:
-Type what you want, e.g.:
-a 2-floor medieval cabin with windows and a door
-The AI returns compact build instructions
-Blocks are placed automatically through a command queue
-Run raw build tags directly
-/dsb do "<fill>0,0,0,8,0,8,minecraft:stone</fill>"
-Supported tags:
-<fill>x0,y0,z0,x1,y1,z1,blockid</fill>
-<save>x0,y0,z0,x1,y1,z1,name</save>
-<load>x,y,z,name</load>
-Coordinates are relative to your selection’s minimum corner.
-View / re-run history
-/dsb history
-Browse past prompts
-View AI output
-Re-execute the latest generation inside a new selection
-6. How the AI builds
-Coordinates are local: (0,0,0) to (lenX-1, lenY-1, lenZ-1)
-Roofs use slabs + full blocks, no stairs
-Vertical access uses minecraft:scaffolding
-Large areas are split into 16-block chunks
-Uses tickingarea + structure commands internally
-Example AI output:
-<fill>0,0,0,8,0,8,minecraft:stone</fill>
-<fill>0,1,0,0,4,0,minecraft:oak_log</fill>
-<fill>1,1,0,7,3,0,minecraft:oak_planks</fill>
-<fill>0,5,0,8,5,8,minecraft:oak_slab_top</fill>
-7. Permissions
-Players need GameMaster permission​ (permLevel >= 1)
-Server must allow cheats / command execution
-structure and tickingarea commands are used under the hood
-8. Notes / limitations
-save/load structures are stored per-player in memory
-Restarting the server clears unsaved structures
-AI output is constrained by your selection size
-Keep selections reasonable (don’t request a 200×200 castle in one call)
+---
+
+## ⚠️ 注意事项
+
+- **先在测试世界或备份后使用**：AI 生成结果不保证美观与结构合理，且会直接改动世界方块
+- 执行期间玩家会被临时传送到各区块位置，**请勿在危险环境（岩浆、虚空边）中使用**
+- 建议建筑尺寸不超过 **64×64×64**，过大区域会产生大量指令、执行时间较长
+- 模型名在 `deepseekbuilder.py` 中为 `deepseek-v4-pro` / `deepseek-v4-flash`，如官方模型名变更请自行修改
+- 历史记录会持续累积，长期使用建议定期清理 `deepseekbuilder.json`
+- 若报错 `请先在 deepseek.py 中填入你的 DEEPSEEK_API_KEY`，请检查 Key 是否与脚本中的默认占位符一致（脚本默认值为 `"to replace"`）
+
+---
+
+## 🐛 常见问题
+
+**Q：提示"请先用铁斧选区"？**  
+A：需要手持铁斧依次点击两个方块，看到 `POS_A` / `POS_B` 提示后再执行指令。
+
+**Q：执行后建筑位置不对？**  
+A：AI 坐标是相对选区的，选区最小点即局部 `(0,0,0)`。请确认两次点击的方块范围符合预期。
+
+**Q：生成失败退出码非 0？**  
+A：查看服务器控制台的 `[DSB] 错误输出`，通常是 API Key 无效、网络不通或 Python 环境缺少 `openai`。
+
+**Q：台阶变成整块？**  
+A：确认 AI 输出的是 `_bottom` / `_top` 后缀格式，插件依赖该后缀转换为 `vertical_half` 状态。
+
+---
+
+## 📄 License
+
+MIT License
+
+---
+
+## 🙏 致谢
+
+- [DeepSeek](https://www.deepseek.com/) —— 大模型能力
+- [LiteLoaderBDS](https://github.com/LiteLDev/LiteLoaderBDS) —— 插件平台
+- [HelperLib](https://github.com/afraidofsunlight/HelperLib) —— 类型支持
+
+> 本项目仅供学习交流，请遵守 DeepSeek 服务条款与 Minecraft 相关协议。
