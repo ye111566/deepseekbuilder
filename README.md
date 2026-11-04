@@ -42,7 +42,6 @@
 | 依赖 | 说明 |
 |:---|:---|
 | [lse](https://github.com/LiteLDev/legacyscriptengine) | 插件运行平台 |
-| [HelperLib](https://github.com/afraidofsunlight/HelperLib) | JS 类型提示（仅开发需要，运行可不装） |
 | Python 3.8+ | 调用 DeepSeek API |
 | `openai` Python 包 | `pip install openai` |
 | DeepSeek API Key | 在 [DeepSeek 开放平台](https://platform.deepseek.com/) 申请 |
