@@ -1,12 +1,11 @@
-# deepseekbuilder
-use deepseek to build construstions in minecraft!(levilamina)
+
 # DeepSeek Builder
 
 > 用一句自然语言，在 Minecraft 里生成建筑。  
 > 基于 **LiteLoaderBDS** 的 AI 建筑生成插件，对接 **DeepSeek** 大模型，支持选区、生成、历史记录与重放。
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Platform](https://img.shields.io/badge/platform-LiteLoaderBDS-green.svg)
+![Platform](https://img.shields.io/badge/platform-Levilamina-green.svg)
 ![Version](https://img.shields.io/badge/version-1.0.3-orange.svg)
 
 ---
